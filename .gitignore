@@ -1,0 +1,13 @@
+# Build artifacts
+graph-approx
+*.o
+*.out
+*.exe
+*.dSYM/
+
+# Editor / OS clutter
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
