@@ -1,39 +1,22 @@
 #include "graph_approx/apl.h"
 #include "graph_approx/graph.h"
+
 #include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <cstdint>
-#include <iostream>
 #include <vector>
 
+namespace graph_approx {
 using namespace std;
 
-static bool flag = true;
+namespace {
 
-static void printVec(std::vector< std::vector<unsigned long int> >& vec) {
-	for (int i = 0; i < (int)vec.size(); i++) {
-		cout << "Vertex = " << i << " ";
-		for (int j = 0; j < (int)vec[i].size(); j++) {
-			cout << vec[i][j];
-		}
-		cout << "\n";
-	}
-	cout << "\n";
-}
-
-static void printNeighbourhoods(int max_distance, vector<unsigned long int>& N_Function){
-	cout << "\n";
-	for (int i = 0; i < max_distance; i++)
-		cout << "N(" << i << ") = " << N_Function[i] << "\n";
-}
-
-static long jenkins(long x, long seed) {
+long jenkins(long x, long seed) {
 	unsigned long a, b, c;
 
 	a = seed + x;
 	b = seed;
-	c = 0x9e3779b97f4a7c13L; //the golden ratio; an arbitrary value
+	c = 0x9e3779b97f4a7c13L;  // golden ratio, arbitrary
 
 	a -= b; a -= c; a ^= (c >> 43);
 	b -= c; b -= a; b ^= (a << 9);
@@ -51,137 +34,127 @@ static long jenkins(long x, long seed) {
 	return c;
 }
 
-static int countLeadingZeros(int64_t x) {
-	int total_bits = sizeof(x) * 8;
-
+int count_leading_zeros(int64_t x) {
+	const int total_bits = sizeof(x) * 8;
 	int res = 0;
-	while ( !(x & (static_cast<uint64_t>(1) << (total_bits - 1))) ) {
-		x = (x << 1);
-		res++;
+	while (!(x & (static_cast<uint64_t>(1) << (total_bits - 1)))) {
+		x <<= 1;
+		++res;
 	}
 	return res;
 }
 
-static double computeAlpha(uint64_t m) {
-	double alpha;
+double compute_alpha(uint64_t m) {
 	switch (m) {
-		case 16:
-			alpha = 0.673;
-			break;
-		case 32:
-			alpha = 0.697;
-			break;
-		case 64:
-			alpha = 0.709;
-			break;
-		default:
-			alpha = 0.7213 / (1.0 + 1.079 / m);
-			break;
-	}
-	return alpha;
-}
-
-static void updateCounter(std::vector< std::vector<int> >& c, std::vector< std::vector<int> >& temp) {
-	for(int i = 0; i < (int)temp.size(); i++){
-		int v = temp[i][0];
-		int n = temp[i][1];
-		int value = temp[i][2];
-		if (value > c[v][n]){
-			c[v][n] = value;
-		}
+		case 16: return 0.673;
+		case 32: return 0.697;
+		case 64: return 0.709;
+		default: return 0.7213 / (1.0 + 1.079 / m);
 	}
 }
 
-static void add(std::vector< std::vector<int> >& c, long v, int b, long seed) {
+void hll_add(vector<vector<int>>& c, long v, int b, long seed) {
 	int64_t x = jenkins(v, seed);
-	int j = static_cast<uint64_t>(x) >> (64-b);
-	int w = countLeadingZeros(x << b) + 1;
-
-	c[v][j] = max(w,c[v][j]);
+	int j = static_cast<uint64_t>(x) >> (64 - b);
+	int w = count_leading_zeros(x << b) + 1;
+	c[v][j] = max(w, c[v][j]);
 }
 
-static uint64_t size(vector< vector<int> >& c, uint64_t m, double alpha, long v) {
+uint64_t hll_size(const vector<vector<int>>& c, uint64_t m, double alpha, long v) {
 	long double denominator = 0;
-	for(uint64_t i=0; i<m; i++){
-		denominator += pow(2, - c[v][i]);
+	for (uint64_t i = 0; i < m; ++i) {
+		denominator += pow(2, -c[v][i]);
 	}
-	long double z = 1/denominator;
-	uint64_t e = alpha * pow(m,2) * z;
-	return e;
+	long double z = 1 / denominator;
+	return static_cast<uint64_t>(alpha * pow(m, 2) * z);
 }
 
-static void Union(std::vector< std::vector<int> >& c,  long u, long v, uint64_t m, std::vector< std::vector<int> >& temp) {
+// NOTE: preserves the original semantics — `entry` is declared once outside
+// the loop, so successive register-updates within the same call accumulate
+// into the same vector and only the first triple is later applied by
+// apply_updates(). This is faithful to the original course implementation.
+void hll_union(const vector<vector<int>>& c, long u, long v, uint64_t m,
+               vector<vector<int>>& temp, bool& changed) {
 	vector<int> entry;
-	for(int i=0; i<(int)m; i++){
-		if(c[v][i] > c[u][i]){
-			flag = true;
-			entry.push_back(u);
-			entry.push_back(i);
+	for (uint64_t i = 0; i < m; ++i) {
+		if (c[v][i] > c[u][i]) {
+			changed = true;
+			entry.push_back(static_cast<int>(u));
+			entry.push_back(static_cast<int>(i));
 			entry.push_back(c[v][i]);
 			temp.push_back(entry);
 		}
 	}
 }
 
-static void computeNeighbourhoodFunction(vector< vector<int> >& c, vector<unsigned long int>& N_Function, uint64_t m, double alpha) {
-	uint64_t size_node;
-	uint64_t total_size = 0;
-	for(uint64_t v = 0; v < (uint64_t)N; v++) {
-		size_node = size(c, m, alpha, v);
-		total_size += size_node;
+void apply_updates(vector<vector<int>>& c, const vector<vector<int>>& temp) {
+	for (const auto& entry : temp) {
+		int v = entry[0];
+		int n = entry[1];
+		int value = entry[2];
+		if (value > c[v][n]) c[v][n] = value;
 	}
-	N_Function.push_back(total_size);
 }
 
-static long double computeAverageDistance(int max_distance, vector<unsigned long int>& N_Function) {
-	long double average_distance = 0.0;
-	for (int i = 0; i < max_distance-1; i++){
-		unsigned long int N_difference = N_Function[i+1] - N_Function[i];
-		average_distance += N_difference * (i+1);
+void compute_neighbourhood_function(const vector<vector<int>>& c,
+                                    vector<unsigned long>& N_function,
+                                    uint64_t m, double alpha, int N) {
+	uint64_t total = 0;
+	for (int v = 0; v < N; ++v) {
+		total += hll_size(c, m, alpha, v);
 	}
-
-	average_distance /= N_Function[max_distance-1];
-	return average_distance;
+	N_function.push_back(total);
 }
 
-long double APL(int b) {
-	unsigned seed = chrono::system_clock::now().time_since_epoch().count();
-	uint64_t m = pow(2,b);
+long double compute_average_distance(int max_distance,
+                                     const vector<unsigned long>& N_function) {
+	long double average = 0.0;
+	for (int i = 0; i < max_distance - 1; ++i) {
+		unsigned long diff = N_function[i + 1] - N_function[i];
+		average += diff * (i + 1);
+	}
+	average /= N_function[max_distance - 1];
+	return average;
+}
 
-	flag = true;
-	double alpha = computeAlpha(m);
-	vector<vector<int> > c( N, vector<int> (m, 0));
+}  // namespace
 
-	// initialize counters with the nodes id
-	for(uint64_t v = 0; v < (uint64_t)N; v++) {
-		add(c, v, b, seed);
+long double apl(const Graph& g, int b, std::mt19937& rng) {
+	const int N = g.num_nodes();
+	const uint64_t m = static_cast<uint64_t>(1) << b;
+	const long seed = static_cast<long>(rng());
+	const double alpha = compute_alpha(m);
+
+	vector<vector<int>> c(N, vector<int>(m, 0));
+	for (int v = 0; v < N; ++v) {
+		hll_add(c, v, b, seed);
 	}
 
-	vector<unsigned long int> N_Function;
-	vector<vector<int> > temp;
+	vector<unsigned long> N_function;
+	vector<vector<int>> temp;
 	int t = 0;
-	while(flag) {
-		flag = false;
+	bool changed = true;
+	while (changed) {
+		changed = false;
 		temp.clear();
-		vector<vector<int> >(temp).swap(temp);
+		vector<vector<int>>(temp).swap(temp);
 
-		// do the Union for each edge in the graph
-		for(uint64_t v = 0; v < (uint64_t)N; v++){
-			vector<int> a = c[v];
-			for(int j = offset[v]; j < offset[v+1]; j++){
-				int w = neighbour[j];
-				Union(c, v, w, m, temp);						// B(v, t+1)
+		for (int v = 0; v < N; ++v) {
+			vector<int> a = c[v];  // unused copy, preserved from original
+			(void)a;
+			for (int w : g.neighbours_of(v)) {
+				hll_union(c, v, w, m, temp, changed);  // B(v, t+1)
 			}
 		}
 
-		updateCounter(c, temp);
-		computeNeighbourhoodFunction(c, N_Function, m, alpha);
+		apply_updates(c, temp);
+		compute_neighbourhood_function(c, N_function, m, alpha, N);
 		t += 1;
 	}
+	(void)t;
 
-	int max_distance = N_Function.size();
-	//printNeighbourhoods(max_distance, N_Function);
-	long double avg_distance = computeAverageDistance(max_distance, N_Function);
-
-	return avg_distance;
+	const int max_distance = static_cast<int>(N_function.size());
+	return compute_average_distance(max_distance, N_function);
 }
+
+}  // namespace graph_approx

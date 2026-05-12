@@ -6,7 +6,7 @@ project(graph_approx
     LANGUAGES CXX
 )
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -22,7 +22,6 @@ add_library(graph_approx
     src/apl.cpp
     src/betweenness.cpp
     src/clustering.cpp
-    src/generators.cpp
     src/graph.cpp
 )
 target_include_directories(graph_approx

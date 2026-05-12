@@ -3,59 +3,47 @@
 #include "graph_approx/clustering.h"
 #include "graph_approx/graph.h"
 
-#include <cstdlib>
+#include <chrono>
 #include <iostream>
+#include <random>
 #include <vector>
 
-using namespace std;
-
 int main() {
-	/* N: number of nodes   ||   M: 2 * number of links */
-	cin >> N >> M;
+	using namespace graph_approx;
 
-	neighbour = (int*) malloc(sizeof(int)*M);
-	offset    = (int*) malloc(sizeof(int)*(N+1));
+	auto g = Graph::from_stream(std::cin);
 
-	int u = 0; int v = 0;
-	int previous = 0;
-	int shift = 0;
-	offset[0] = 0;
-	for (int i = 0; i < M; i++) {
-		cin >> u >> v;
-		if (u == previous) {
-			neighbour[i] = v;
-			shift++;
-		}
-		else {
-			neighbour[i] = v;
-			for (int j = previous; j < u; j++)
-				offset[j+1] = shift;
-			previous = u;
-			shift++;
-		}
+	std::cout << "GRAPH IN CSR FORMAT\n";
+	g.print(std::cout);
+	std::cout << '\n';
+
+	std::mt19937 rng(
+		static_cast<std::mt19937::result_type>(
+			std::chrono::system_clock::now().time_since_epoch().count()));
+
+	std::cout << "CLUSTERING COEFFICIENT\n";
+	// Exact Clustering() is O(N^3) — only feasible on small graphs.
+	if (g.num_nodes() <= 1000) {
+		std::cout << "exact:        " << clustering(g) << '\n';
+	} else {
+		std::cout << "exact:        (skipped: N=" << g.num_nodes() << ", O(N^3) infeasible)\n";
 	}
-	offset[N] = M;
+	std::cout << "uniform_wedge: " << uniform_wedge(g, 3, rng) << '\n';
+	std::cout << "naive_sample:  " << approx_clustering_naive(g, 4, rng) << '\n';
+	std::cout << '\n';
 
-	cout << "GRAPH IN CSR FORMAT\n";
-	printGraph(neighbour, offset);
-	cout << "\n";
-
-	cout << "CLUSTERING COEFFICIENT\n";
-	cout << Clustering()    << endl;
-	cout << UniformWedge(3) << endl;
-	cout << ApproxClusteringNaive(4) << endl;
-	cout << "\n";
-
-	cout << "BETWEENNESS CENTRALITY\n";
-	vector<double> betweenness_ = Riondato(0,0,0);
-	for (int i = 0; i < (int)betweenness_.size(); i++) {
-		cout << "Node " << i << " -> " << betweenness_[i] << endl;
+	std::cout << "BETWEENNESS CENTRALITY\n";
+	auto bet = riondato(g, 0.5, 0.5, 0.8, rng);
+	for (std::size_t i = 0; i < bet.size(); ++i) {
+		std::cout << "Node " << i << " -> " << bet[i] << '\n';
 	}
-	cout << "\n";
+	std::cout << '\n';
 
-	cout << "AVERAGE PATH LENGTH\n";
-	cout << APL(4) << endl;
-	cout << "\n";
+	std::cout << "AVERAGE PATH LENGTH\n";
+	for (int b = 3; b <= 6; ++b) {
+		std::cout << "m = " << (1 << b) << ": " << apl(g, b, rng) << '\n';
+	}
+	std::cout << '\n';
 
-	cout << "END\n";
+	std::cout << "END\n";
 }
