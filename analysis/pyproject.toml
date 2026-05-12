@@ -1,0 +1,10 @@
+[project]
+name = "graph-approx-analysis"
+version = "0.1.0"
+description = "Analysis scripts for graph-approximation-algorithms benchmarks"
+requires-python = ">=3.10"
+dependencies = [
+    "matplotlib>=3.7",
+    "pandas>=2.0",
+    "numpy>=1.24",
+]

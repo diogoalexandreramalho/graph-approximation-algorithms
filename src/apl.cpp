@@ -119,7 +119,7 @@ long double compute_average_distance(int max_distance,
 
 }  // namespace
 
-long double apl(const Graph& g, int b, std::mt19937& rng) {
+long double apl(const Graph& g, int b, std::mt19937& rng, AplProgressSink* sink) {
 	const int N = g.num_nodes();
 	const uint64_t m = static_cast<uint64_t>(1) << b;
 	const long seed = static_cast<long>(rng());
@@ -147,8 +147,18 @@ long double apl(const Graph& g, int b, std::mt19937& rng) {
 			}
 		}
 
+		// Capture temp-buffer memory before apply_updates, matching the
+		// `temp.capacity() * 3 * sizeof(int)` metric used by AAva.
+		const double temp_memory_mb =
+			static_cast<double>(temp.capacity() * 3 * sizeof(int)) / std::pow(2, 20);
+
 		apply_updates(c, temp);
 		compute_neighbourhood_function(c, N_function, m, alpha, N);
+
+		if (sink) {
+			sink->on_iteration(static_cast<int>(N_function.size() - 1),
+			                   N_function.back(), temp_memory_mb);
+		}
 		t += 1;
 	}
 	(void)t;

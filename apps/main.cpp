@@ -8,7 +8,10 @@
 #include <CLI/CLI.hpp>
 
 #include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <memory>
 #include <random>
 #include <string>
 
@@ -32,6 +35,22 @@ void time_and_run(bool emit_timing, F&& f) {
 	}
 }
 
+// Writes one CSV row per HyperANF BFS iteration. Appends to the file so
+// multiple invocations (different m values) can accumulate into one CSV.
+class AplCsvSink : public graph_approx::AplProgressSink {
+public:
+	AplCsvSink(std::ostream& out, int m, bool needs_header) : out_(out), m_(m) {
+		if (needs_header) out_ << "m,distance,n_d,memory_mb\n";
+	}
+	void on_iteration(int distance, unsigned long n_d, double memory_mb) override {
+		out_ << m_ << ',' << distance << ',' << n_d << ',' << memory_mb << '\n';
+	}
+
+private:
+	std::ostream& out_;
+	int m_;
+};
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -44,9 +63,12 @@ int main(int argc, char** argv) {
 	bool timing = false;
 
 	int b = 4;
+	std::string emit_csv;
 	auto* apl_cmd = app.add_subcommand("apl", "HyperANF average path length (reads CSR from stdin)");
 	apl_cmd->add_option("--b", b, "log2 of register count (m = 2^b)")->capture_default_str();
 	apl_cmd->add_option("--seed", seed, "RNG seed (-1 = non-deterministic)");
+	apl_cmd->add_option("--emit-csv", emit_csv,
+		"Append per-iteration data to a CSV file (m, distance, n_d, memory_mb)");
 	apl_cmd->add_flag("--timing", timing, "Emit elapsed_ms to stderr");
 
 	auto* brandes_cmd = app.add_subcommand("brandes", "Exact betweenness centrality (reads CSR from stdin)");
@@ -87,8 +109,15 @@ int main(int argc, char** argv) {
 
 	if (apl_cmd->parsed()) {
 		auto g = Graph::from_stream(std::cin);
+		std::ofstream csv_out;
+		std::unique_ptr<AplCsvSink> sink;
+		if (!emit_csv.empty()) {
+			const bool needs_header = !std::filesystem::exists(emit_csv);
+			csv_out.open(emit_csv, std::ios::app);
+			sink = std::make_unique<AplCsvSink>(csv_out, 1 << b, needs_header);
+		}
 		time_and_run(timing, [&] {
-			std::cout << apl(g, b, rng) << '\n';
+			std::cout << apl(g, b, rng, sink.get()) << '\n';
 		});
 	} else if (brandes_cmd->parsed()) {
 		auto g = Graph::from_stream(std::cin);

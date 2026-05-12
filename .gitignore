@@ -13,3 +13,17 @@ compile_commands.json
 .idea/
 *.swp
 *~
+
+# Benchmark outputs, downloaded datasets, generated figures
+benchmarks/results/*
+!benchmarks/results/.gitkeep
+analysis/figures/*
+!analysis/figures/.gitkeep
+datasets/*.edges
+
+# Python
+analysis/.venv/
+analysis/__pycache__/
+analysis/uv.lock
+__pycache__/
+*.pyc
