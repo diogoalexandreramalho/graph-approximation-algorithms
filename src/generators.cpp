@@ -1,5 +1,5 @@
-#include "../include/generators.h"
-#include "../include/graph.h"
+#include "graph_approx/generators.h"
+#include "graph_approx/graph.h"
 #include <algorithm>
 #include <cstdlib>
 #include <ctime>

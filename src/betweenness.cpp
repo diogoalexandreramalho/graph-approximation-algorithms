@@ -1,5 +1,5 @@
-#include "../include/betweenness.h"
-#include "../include/graph.h"
+#include "graph_approx/betweenness.h"
+#include "graph_approx/graph.h"
 #include <cassert>
 #include <chrono>
 #include <cmath>

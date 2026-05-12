@@ -1,5 +1,5 @@
-#include "../include/clustering.h"
-#include "../include/graph.h"
+#include "graph_approx/clustering.h"
+#include "graph_approx/graph.h"
 #include <cassert>
 #include <cstdlib>
 

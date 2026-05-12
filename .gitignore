@@ -1,9 +1,11 @@
 # Build artifacts
 graph-approx
+build/
 *.o
 *.out
 *.exe
 *.dSYM/
+compile_commands.json
 
 # Editor / OS clutter
 .DS_Store

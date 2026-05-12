@@ -1,0 +1,18 @@
+---
+Checks: >
+    bugprone-*,
+    cppcoreguidelines-*,
+    modernize-*,
+    performance-*,
+    readability-*,
+    -modernize-use-trailing-return-type,
+    -readability-identifier-length,
+    -readability-magic-numbers,
+    -cppcoreguidelines-avoid-magic-numbers,
+    -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+    -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+    -cppcoreguidelines-non-private-member-variables-in-classes
+WarningsAsErrors: ''
+HeaderFilterRegex: 'include/graph_approx/.*\.h'
+FormatStyle: file
+...

@@ -1,4 +1,4 @@
-#include "../include/graph.h"
+#include "graph_approx/graph.h"
 #include <algorithm>
 #include <iostream>
 

@@ -1,5 +1,5 @@
-#include "../include/apl.h"
-#include "../include/graph.h"
+#include "graph_approx/apl.h"
+#include "graph_approx/graph.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>

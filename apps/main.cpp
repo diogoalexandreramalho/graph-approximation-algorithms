@@ -1,7 +1,7 @@
-#include "../include/apl.h"
-#include "../include/betweenness.h"
-#include "../include/clustering.h"
-#include "../include/graph.h"
+#include "graph_approx/apl.h"
+#include "graph_approx/betweenness.h"
+#include "graph_approx/clustering.h"
+#include "graph_approx/graph.h"
 
 #include <cstdlib>
 #include <iostream>
