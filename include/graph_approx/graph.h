@@ -2,6 +2,7 @@
 
 #include <iosfwd>
 #include <span>
+#include <utility>
 #include <vector>
 
 namespace graph_approx {
@@ -28,7 +29,14 @@ public:
 	// O(min(deg u, deg v)).
 	bool is_adjacent(int u, int v) const noexcept;
 
+	// Materialise an edge list with each undirected edge appearing once (u < v).
+	std::vector<std::pair<int, int>> edges() const;
+
+	// Debug dump: two lines (neighbours / offsets), space-separated.
 	void print(std::ostream& out) const;
+
+	// Write in the input-compatible CSR format ("N 2M\n" header + sorted u v pairs).
+	void to_stream(std::ostream& out) const;
 
 private:
 	std::vector<int> offsets_;     // size = N + 1

@@ -45,11 +45,34 @@ bool Graph::is_adjacent(int u, int v) const noexcept {
 	return false;
 }
 
+std::vector<std::pair<int, int>> Graph::edges() const {
+	std::vector<std::pair<int, int>> result;
+	result.reserve(neighbours_.size() / 2);
+	for (int u = 0; u < num_nodes(); ++u) {
+		const int end = offsets_[u + 1];
+		for (int i = offsets_[u]; i < end; ++i) {
+			int v = neighbours_[i];
+			if (v > u) result.emplace_back(u, v);
+		}
+	}
+	return result;
+}
+
 void Graph::print(std::ostream& out) const {
 	for (int n : neighbours_) out << n << ' ';
 	out << '\n';
 	for (int o : offsets_) out << o << ' ';
 	out << '\n';
+}
+
+void Graph::to_stream(std::ostream& out) const {
+	out << num_nodes() << ' ' << num_edges() << '\n';
+	for (int u = 0; u < num_nodes(); ++u) {
+		const int end = offsets_[u + 1];
+		for (int i = offsets_[u]; i < end; ++i) {
+			out << u << ' ' << neighbours_[i] << '\n';
+		}
+	}
 }
 
 }  // namespace graph_approx

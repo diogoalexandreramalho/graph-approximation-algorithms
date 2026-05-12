@@ -18,11 +18,21 @@ if(PROJECT_IS_TOP_LEVEL)
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
+include(FetchContent)
+FetchContent_Declare(
+    cli11
+    GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+    GIT_TAG        v2.4.2
+)
+FetchContent_MakeAvailable(cli11)
+
 add_library(graph_approx
     src/apl.cpp
     src/betweenness.cpp
     src/clustering.cpp
+    src/generators.cpp
     src/graph.cpp
+    src/mincut.cpp
 )
 target_include_directories(graph_approx
     PUBLIC
@@ -33,7 +43,7 @@ target_compile_options(graph_approx PRIVATE
 )
 
 add_executable(graph-approx apps/main.cpp)
-target_link_libraries(graph-approx PRIVATE graph_approx)
+target_link_libraries(graph-approx PRIVATE graph_approx CLI11::CLI11)
 
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.txt)
     enable_testing()
